@@ -1,0 +1,446 @@
+<style>
+  .ipon-wrap {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #fdfaf5;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  .ipon-header { text-align: center; margin-bottom: 14px; }
+  .ipon-header h2 { margin: 0 0 4px; font-size: 20px; color: #3a2e26; }
+  .ipon-header p { margin: 0; font-size: 13px; color: #8a7b6c; }
+
+  .grand-stats {
+    display: flex;
+    justify-content: space-between;
+    background: #fff;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .stat { text-align: center; flex: 1; }
+  .stat .num { font-size: 19px; font-weight: 700; color: #2f6b3a; }
+  .stat .label { font-size: 11px; color: #8a7b6c; margin-top: 2px; }
+
+  .edit-toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    background: #fff;
+    border-radius: 30px;
+    padding: 8px 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .edit-toggle-row span { font-size: 12px; color: #6b5f52; }
+  .switch {
+    position: relative;
+    width: 42px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider {
+    position: absolute; cursor: pointer; inset: 0;
+    background: #d8cbb8; border-radius: 22px; transition: .2s;
+  }
+  .slider:before {
+    content: ""; position: absolute; height: 16px; width: 16px;
+    left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .2s;
+  }
+  .switch input:checked + .slider { background: #d9738f; }
+  .switch input:checked + .slider:before { transform: translateX(20px); }
+  .edit-hint { font-size: 11px; color: #b1477e; text-align: center; margin: -10px 0 14px; display: none; }
+  .edit-hint.show { display: block; }
+
+  .month-block { margin-bottom: 26px; }
+  .month-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .month-title { font-size: 15px; font-weight: 700; color: #3a2e26; }
+  .month-sub { font-size: 12px; color: #8a7b6c; }
+
+  .progress-bar-bg {
+    background: #eee2d0;
+    border-radius: 8px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .progress-bar-fill {
+    background: linear-gradient(90deg,#7fc98f,#3f9e57);
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s ease;
+  }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+  }
+  .cal-daylabel {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 600;
+    color: #b0a493;
+    padding-bottom: 2px;
+  }
+  .cal-cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  
+  /* CIRCLE STYLING */
+  .circle {
+    width: 85%;
+    height: 85%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: default;
+    user-select: none;
+    transition: transform 0.15s ease, background 0.15s ease;
+    position: relative;
+  }
+  
+  /* COLORS */
+  .circle.sunday { background: #c9c9c9; color: #6b6b6b; }
+  .circle.holiday { background: #f472a0; color: #7a1c47; font-weight: 700; }
+  .circle.suspended { background: #ff7657; color: #5c1808; font-weight: 700; }
+  .circle.class-day {
+    background: #fff;
+    border: 2px solid #e0b84a;
+    color: #a5822f;
+    cursor: pointer;
+  }
+  .circle.class-day.saved {
+    background: #3f9e57;
+    border-color: #3f9e57;
+    color: #fff;
+    transform: scale(1.06);
+  }
+
+  .circle.class-day:active, .circle.holiday.editable:active, .circle.sunday.editable:active { transform: scale(0.94); }
+  .circle.empty { visibility: hidden; }
+  .circle.editable { cursor: pointer; outline: 2px dashed transparent; }
+  
+  .edit-mode .circle:not(.empty) { cursor: pointer; }
+  .edit-mode .circle:not(.empty):hover { outline: 2px dashed #b1477e; }
+  
+  .override-mark {
+    position: absolute;
+    top: -1px; right: -1px;
+    background: #b1477e;
+    border-radius: 50%;
+    width: 9px; height: 9px;
+    box-shadow: 0 0 0 2px #fff;
+  }
+
+  /* LEGEND (Now styled to fit per month) */
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 12px;
+    font-size: 9px;
+    color: #6b5f52;
+    flex-wrap: wrap;
+    background: #fff;
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  .reset-btn {
+    display: block;
+    margin: 20px auto 0;
+    background: none;
+    border: 1px solid #d8cbb8;
+    color: #8a7b6c;
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .reset-btn:hover { background: #f2ebe0; }
+</style>
+
+<div class="ipon-wrap">
+  <div class="ipon-header">
+    <h2>Ipon Tracker</h2>
+    <p>Academic Calendar 2026 &middot; ₱300 per class day</p>
+  </div>
+
+  <div class="grand-stats">
+    <div class="stat">
+      <div class="num" id="grandSavedCount">0</div>
+      <div class="label">Naipon na araw</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="grandSavedPeso">₱0</div>
+      <div class="label">Naipon na pera</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="grandPotential">₱0</div>
+      <div class="label">Total potential</div>
+    </div>
+  </div>
+
+  <div class="edit-toggle-row">
+    <span>Normal mode</span>
+    <label class="switch">
+      <input type="checkbox" id="editModeToggle">
+      <span class="slider"></span>
+    </label>
+    <span>Edit holidays</span>
+  </div>
+  <div class="edit-hint" id="editHint">Edit mode ON &mdash; i-click ang araw para mag-cycle: Class Day ➔ Holiday ➔ Suspended ➔ Balik sa Normal.</div>
+
+  <div id="monthsContainer"></div>
+
+  <button class="reset-btn" id="resetBtn">Reset lahat ng naipon</button>
+</div>
+
+<script>
+(function() {
+  const SAVED_KEY = 'ipon-2026-saved-days';
+  const OVERRIDE_KEY = 'ipon-2026-holiday-overrides';
+  const DAILY = 300;
+
+  const MONTHS = [
+    { name: 'August 2026',    key: '2026-08', days: 31, firstDow: 6, holidays: [21, 24] },
+    { name: 'September 2026', key: '2026-09', days: 30, firstDow: 2, holidays: [] },
+    { name: 'October 2026',   key: '2026-10', days: 31, firstDow: 4, holidays: [] },
+    { name: 'November 2026',  key: '2026-11', days: 30, firstDow: 0, holidays: [2] },
+    { name: 'December 2026',  key: '2026-12', days: 31, firstDow: 2, holidays: [24, 25, 30, 31] },
+    { name: 'January 2027',   key: '2027-01', days: 31, firstDow: 5, holidays: [1] },
+    { name: 'February 2027',  key: '2027-02', days: 28, firstDow: 1, holidays: [6, 25] },
+    { name: 'March 2027',     key: '2027-03', days: 31, firstDow: 1, holidays: [25, 26, 27] },
+    { name: 'April 2027',     key: '2027-04', days: 30, firstDow: 4, holidays: [9] },
+    { name: 'May 2027',       key: '2027-05', days: 31, firstDow: 6, holidays: [1] }
+  ];
+
+  let savedSet = new Set();      
+  let overrides = {};            
+  let editMode = false;
+
+  function dateKey(monthKey, day) {
+    return monthKey + '-' + String(day).padStart(2, '0');
+  }
+
+  function baseType(month, day) {
+    const dow = (month.firstDow + (day - 1)) % 7;
+    if (month.holidays.includes(day)) return 'holiday';
+    if (dow === 0) return 'sunday';
+    return 'class-day';
+  }
+
+  function effectiveType(month, day) {
+    const key = dateKey(month.key, day);
+    return overrides[key] || baseType(month, day);
+  }
+
+  function buildMonth(month) {
+    const block = document.createElement('div');
+    block.className = 'month-block';
+
+    const titleRow = document.createElement('div');
+    titleRow.className = 'month-title-row';
+    titleRow.innerHTML = `<span class="month-title">${month.name}</span><span class="month-sub" id="sub-${month.key}"></span>`;
+    block.appendChild(titleRow);
+
+    const barBg = document.createElement('div');
+    barBg.className = 'progress-bar-bg';
+    barBg.innerHTML = `<div class="progress-bar-fill" id="fill-${month.key}"></div>`;
+    block.appendChild(barBg);
+
+    const grid = document.createElement('div');
+    grid.className = 'cal-grid';
+    grid.id = 'grid-' + month.key;
+    ['Su','M','T','W','Th','F','S'].forEach(l => {
+      const el = document.createElement('div');
+      el.className = 'cal-daylabel';
+      el.textContent = l;
+      grid.appendChild(el);
+    });
+    for (let i = 0; i < month.firstDow; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'cal-cell';
+      const c = document.createElement('div');
+      c.className = 'circle empty';
+      empty.appendChild(c);
+      grid.appendChild(empty);
+    }
+    for (let d = 1; d <= month.days; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'cal-cell';
+      
+      const circle = document.createElement('div');
+      circle.className = 'circle';
+      circle.textContent = d;
+      circle.dataset.month = month.key;
+      circle.dataset.day = d;
+      circle.addEventListener('click', () => handleClick(month, d));
+      
+      cell.appendChild(circle);
+      grid.appendChild(cell);
+    }
+    block.appendChild(grid);
+
+    // DINAGDAG NA LEGEND PER MONTH
+    const legend = document.createElement('div');
+    legend.className = 'legend';
+    legend.innerHTML = `
+      <div class="legend-item"><span class="legend-dot" style="background:#c9c9c9"></span> Sun</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#f472a0"></span> Holiday</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#ff7657"></span> Suspended</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#fff;border:2px solid #e0b84a"></span> Class</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#3f9e57"></span> Naipon</div>
+      <div class="legend-item"><span class="legend-dot" style="background:#fff;border:2px solid #b1477e"></span> Edited</div>
+    `;
+    block.appendChild(legend);
+
+    document.getElementById('monthsContainer').appendChild(block);
+  }
+
+  function handleClick(month, day) {
+    const key = dateKey(month.key, day);
+    
+    if (editMode) {
+      const current = effectiveType(month, day);
+      const base = baseType(month, day);
+      
+      let nextType = '';
+      if (current === 'class-day') nextType = 'holiday';
+      else if (current === 'holiday') nextType = 'suspended';
+      else if (current === 'suspended') nextType = 'class-day';
+      else nextType = 'class-day'; 
+
+      if (nextType === base) {
+        delete overrides[key];
+      } else {
+        overrides[key] = nextType;
+      }
+      
+      if (nextType !== 'class-day') {
+        savedSet.delete(key);
+        persistSaved();
+      }
+
+      persistOverrides();
+      renderAll();
+    } else {
+      const type = effectiveType(month, day);
+      if (type !== 'class-day') return;
+      if (savedSet.has(key)) savedSet.delete(key);
+      else savedSet.add(key);
+      persistSaved();
+      renderAll();
+    }
+  }
+
+  function renderMonth(month) {
+    let count = 0, saved = 0;
+    for (let d = 1; d <= month.days; d++) {
+      const key = dateKey(month.key, d);
+      const type = effectiveType(month, d);
+      const isOverridden = !!overrides[key];
+      const circle = document.querySelector(`.circle[data-month="${month.key}"][data-day="${d}"]`);
+      if (!circle) continue;
+      
+      circle.className = 'circle ' + type;
+      circle.querySelectorAll('.override-mark').forEach(m => m.remove());
+      
+      if (isOverridden) {
+        const mark = document.createElement('span');
+        mark.className = 'override-mark';
+        circle.appendChild(mark);
+      }
+      
+      if (type === 'class-day') {
+        count++;
+        if (savedSet.has(key)) {
+          circle.classList.add('saved');
+          saved++;
+        }
+      }
+    }
+    document.getElementById('sub-' + month.key).textContent =
+      saved + ' / ' + count + ' class days · ₱' + (saved * DAILY).toLocaleString() + ' / ₱' + (count * DAILY).toLocaleString();
+    const pct = count ? (saved / count) * 100 : 0;
+    document.getElementById('fill-' + month.key).style.width = pct + '%';
+  }
+
+  function renderAll() {
+    document.querySelectorAll('.ipon-wrap').forEach(w => w.classList.toggle('edit-mode', editMode));
+    let grandCount = 0, grandSaved = 0;
+    MONTHS.forEach(m => {
+      renderMonth(m);
+      for (let d = 1; d <= m.days; d++) {
+        const key = dateKey(m.key, d);
+        if (effectiveType(m, d) === 'class-day') {
+          grandCount++;
+          if (savedSet.has(key)) grandSaved++;
+        }
+      }
+    });
+    document.getElementById('grandSavedCount').textContent = grandSaved;
+    document.getElementById('grandSavedPeso').textContent = '₱' + (grandSaved * DAILY).toLocaleString();
+    document.getElementById('grandPotential').textContent = '₱' + (grandCount * DAILY).toLocaleString();
+  }
+
+  function persistSaved() {
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(Array.from(savedSet))); }
+    catch (e) { console.error('Storage error', e); }
+  }
+  
+  function persistOverrides() {
+    try { localStorage.setItem(OVERRIDE_KEY, JSON.stringify(overrides)); }
+    catch (e) { console.error('Storage error', e); }
+  }
+
+  function loadAll() {
+    try {
+      const r = localStorage.getItem(SAVED_KEY);
+      if (r) savedSet = new Set(JSON.parse(r));
+    } catch (e) {}
+    try {
+      const r2 = localStorage.getItem(OVERRIDE_KEY);
+      if (r2) overrides = JSON.parse(r2);
+    } catch (e) {}
+    renderAll();
+  }
+
+  MONTHS.forEach(buildMonth);
+
+  document.getElementById('editModeToggle').addEventListener('change', (e) => {
+    editMode = e.target.checked;
+    document.getElementById('editHint').classList.toggle('show', editMode);
+    renderAll();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    savedSet = new Set();
+    persistSaved();
+    renderAll();
+  });
+
+  loadAll();
+})();
+</script>
